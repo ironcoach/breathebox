@@ -68,24 +68,22 @@ class _BreatheScreenState extends ConsumerState<BreatheScreen>
     if (_listenersInitialized) return;
     _listenersInitialized = true;
 
-    ref.listen<BreathPhase>(breathePhaseProvider, (previous, next) {
-      final phaseSeconds = _secondsForPhase(next).clamp(1, 60);
-      _animController.duration = Duration(seconds: phaseSeconds);
+    // ✅ ONLY use the animCommandProvider listener - remove the phase listener
+    ref.listen<(AnimationCommand, int?)>(animCommandProvider, (previous, next) {
+      final (cmd, secs) = next;
+      print("🎬 Animation command: $cmd with duration: ${secs}s");
 
-      print("Phase changed → $next (duration $phaseSeconds s)");
-
-      if (next == BreathPhase.inhale) {
+      if (cmd == AnimationCommand.forward && secs != null) {
+        _animController.duration = Duration(seconds: secs);
+        _animController.forward(from: 0.0);
+        print("▶️ Starting FORWARD animation");
+      } else if (cmd == AnimationCommand.reverse && secs != null) {
+        _animController.duration = Duration(seconds: secs);
+        _animController.reverse(from: 1.0);
+        print("◀️ Starting REVERSE animation");
+      } else if (cmd == AnimationCommand.stop) {
         _animController.stop();
-        _animController.forward(from: 0.0); // ✅ grow
-      } else if (next == BreathPhase.exhale) {
-        _animController.stop();
-        _animController.reverse(from: 1.0); // ✅ shrink
-      } else if (next == BreathPhase.hold) {
-        _animController.stop();
-        _animController.value = 1.0; // lock full size
-      } else if (next == BreathPhase.rest) {
-        _animController.stop();
-        _animController.value = 0.0; // lock small size
+        print("⏹️ Stopping animation");
       }
     });
   }

@@ -14,9 +14,6 @@ class BreathingCircle extends StatelessWidget {
     return AnimatedBuilder(
       animation: animation,
       builder: (context, child) {
-        // Debug output — watch this in the console
-        print("BreathingCircle scale = ${animation.value}");
-
         return Transform.scale(
           scale: animation.value,
           child: Container(
@@ -28,17 +25,13 @@ class BreathingCircle extends StatelessWidget {
                   Theme.of(context).colorScheme.primary.withOpacity(0.4),
                 ],
               ),
-            ),
-            child: Center(
-              child: Text(
-                animation.value
-                    .toStringAsFixed(2), // 👀 shows scale inside circle
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 5,
                 ),
-              ),
+              ],
             ),
           ),
         );

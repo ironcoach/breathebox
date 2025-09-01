@@ -137,18 +137,26 @@ class BreatheController extends StateNotifier<BreathPhase> {
       ref.read(breathCountProvider.notifier).state++;
     }
 
+    // ✅ FIX: Properly trigger animation commands
     if (!_isPaused) {
       switch (phase) {
         case BreathPhase.inhale:
+          print("🫁 INHALE - Triggering FORWARD animation for ${duration}s");
           ref.read(animCommandProvider.notifier).state =
               (AnimationCommand.forward, duration);
           break;
         case BreathPhase.exhale:
+          print("💨 EXHALE - Triggering REVERSE animation for ${duration}s");
           ref.read(animCommandProvider.notifier).state =
               (AnimationCommand.reverse, duration);
           break;
         case BreathPhase.hold:
+          print("🫷 HOLD - Stopping animation");
+          ref.read(animCommandProvider.notifier).state =
+              (AnimationCommand.stop, null);
+          break;
         case BreathPhase.rest:
+          print("😌 REST - Stopping animation");
           ref.read(animCommandProvider.notifier).state =
               (AnimationCommand.stop, null);
           break;
