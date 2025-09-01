@@ -79,25 +79,6 @@ class _BreatheScreenState extends ConsumerState<BreatheScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (!isActive) ...[
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Start Session'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                  onPressed: () {
-                    final settings = ref.read(settingsProvider);
-                    ref
-                        .read(breathePhaseProvider.notifier)
-                        .startSession(ref, settings.sessionDurationSeconds);
-                  },
-                ),
-                const SizedBox(height: 24),
-              ],
               ScaleTransition(
                 scale: _animController,
                 child: Container(
@@ -132,6 +113,25 @@ class _BreatheScreenState extends ConsumerState<BreatheScreen>
                   ),
                 ),
               ),
+              if (!isActive) ...[
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Start Session'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                  onPressed: () {
+                    final settings = ref.read(settingsProvider);
+                    ref
+                        .read(breathePhaseProvider.notifier)
+                        .startSession(ref, settings.sessionDurationSeconds);
+                  },
+                ),
+                const SizedBox(height: 24),
+              ],
               if (isActive) ...[
                 const SizedBox(height: 25),
                 Text(

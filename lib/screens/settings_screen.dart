@@ -111,6 +111,19 @@ class SettingsScreen extends ConsumerWidget {
                     );
               },
             ),
+            // Add to settings_screen.dart after the other sliders
+            _DurationSlider(
+              label: 'Session Duration (minutes)',
+              value: settings.sessionDurationSeconds ~/ 60,
+              min: 1,
+              max: 30,
+              div: 30,
+              onChanged: (value) {
+                ref.read(settingsProvider.notifier).updateSettings(
+                      sessionDurationSeconds: value * 60,
+                    );
+              },
+            ),
             Card(
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: SwitchListTile(
@@ -180,11 +193,17 @@ class _PresetCard extends StatelessWidget {
 class _DurationSlider extends StatelessWidget {
   final String label;
   final int value;
+  final int min;
+  final int max;
+  final int div;
   final ValueChanged<int> onChanged;
 
   const _DurationSlider({
     required this.label,
     required this.value,
+    this.min = 1,
+    this.max = 10,
+    this.div = 9,
     required this.onChanged,
   });
 
@@ -196,9 +215,9 @@ class _DurationSlider extends StatelessWidget {
         Text('$label: ${value}s'),
         Slider(
           value: value.toDouble(),
-          min: 1,
-          max: 10,
-          divisions: 9,
+          min: min.toDouble(),
+          max: max.toDouble(),
+          divisions: div,
           onChanged: (value) => onChanged(value.round()),
         ),
       ],
