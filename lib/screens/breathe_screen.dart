@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../controllers/breathe_controller.dart';
 import '../controllers/settings_controller.dart';
-import '../controllers/session_controller.dart';
 import '../models/session.dart';
+import '../widgets/breathing_circle.dart';
 
 class BreatheScreen extends ConsumerStatefulWidget {
   const BreatheScreen({super.key});
@@ -15,16 +15,20 @@ class BreatheScreen extends ConsumerStatefulWidget {
 
 class _BreatheScreenState extends ConsumerState<BreatheScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
+  late final AnimationController _animController;
+  bool _listenersInitialized = false;
 
   @override
   void initState() {
     super.initState();
+
     _animController = AnimationController(
       vsync: this,
-      lowerBound: 0.7,
-      upperBound: 1.2,
+      duration: const Duration(seconds: 2),
     );
+
+    // Start small
+    _animController.value = 0.0;
   }
 
   @override
@@ -33,238 +37,191 @@ class _BreatheScreenState extends ConsumerState<BreatheScreen>
     super.dispose();
   }
 
-  String formatDuration(int seconds) {
-    final minutes = seconds ~/ 60;
-    final remainingSeconds = seconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  int _secondsForPhase(BreathPhase phase) {
+    final s = ref.read(settingsProvider);
+    switch (phase) {
+      case BreathPhase.inhale:
+        return s.inhaleSeconds;
+      case BreathPhase.hold:
+        return s.holdSeconds;
+      case BreathPhase.exhale:
+        return s.exhaleSeconds;
+      case BreathPhase.rest:
+        return s.restSeconds;
+    }
+  }
+
+  String _phaseLabel(BreathPhase phase) {
+    switch (phase) {
+      case BreathPhase.inhale:
+        return 'Inhale';
+      case BreathPhase.hold:
+        return 'Hold';
+      case BreathPhase.exhale:
+        return 'Exhale';
+      case BreathPhase.rest:
+        return 'Rest';
+    }
+  }
+
+  void _ensureListeners() {
+    if (_listenersInitialized) return;
+    _listenersInitialized = true;
+
+    ref.listen<BreathPhase>(breathePhaseProvider, (previous, next) {
+      final phaseSeconds = _secondsForPhase(next).clamp(1, 60);
+      _animController.duration = Duration(seconds: phaseSeconds);
+
+      print("Phase changed → $next (duration $phaseSeconds s)");
+
+      if (next == BreathPhase.inhale) {
+        _animController.stop();
+        _animController.forward(from: 0.0); // ✅ grow
+      } else if (next == BreathPhase.exhale) {
+        _animController.stop();
+        _animController.reverse(from: 1.0); // ✅ shrink
+      } else if (next == BreathPhase.hold) {
+        _animController.stop();
+        _animController.value = 1.0; // lock full size
+      } else if (next == BreathPhase.rest) {
+        _animController.stop();
+        _animController.value = 0.0; // lock small size
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    _ensureListeners();
+
+    final settings = ref.watch(settingsProvider);
     final phase = ref.watch(breathePhaseProvider);
-    final breathCount = ref.watch(breathCountProvider);
     final countdown = ref.watch(phaseCountdownProvider);
-    final elapsedSeconds = ref.watch(sessionDurationProvider);
+    final breathsTaken = ref.watch(breathCountProvider);
     final isPaused = ref.watch(isPausedProvider);
-    final isActive = ref.watch(breathePhaseProvider.notifier).isSessionActive;
 
-    ref.listen<(AnimationCommand, int?)>(animCommandProvider, (previous, next) {
-      final (cmd, secs) = next;
-      if (cmd == AnimationCommand.forward && secs != null) {
-        _animController.duration = Duration(seconds: secs);
-        _animController.forward(from: 0.0);
-      } else if (cmd == AnimationCommand.reverse && secs != null) {
-        _animController.duration = Duration(seconds: secs);
-        _animController.reverse(from: 1.0);
-      } else if (cmd == AnimationCommand.stop) {
-        _animController.stop();
-      }
-    });
-
-    final circleColor = switch (phase) {
-      BreathPhase.inhale => Colors.teal,
-      BreathPhase.hold => Colors.amber,
-      BreathPhase.exhale => Colors.lightBlue,
-      BreathPhase.rest => Colors.deepPurple,
-    };
+    final controller = ref.read(breathePhaseProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Breathing Session'),
+        title: const Text('Breathe Session'),
         centerTitle: true,
       ),
       body: Center(
         child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ScaleTransition(
-                scale: _animController,
-                child: Container(
-                  width: 220,
-                  height: 220,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: circleColor,
-                    boxShadow: [
-                      BoxShadow(
-                        color: circleColor.withOpacity(0.35),
-                        blurRadius: 24,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 500),
-                      child: ref.watch(settingsProvider).showPhaseCountdown
-                          ? Text(
-                              '$countdown',
-                              key: ValueKey<int>(countdown),
-                              style: const TextStyle(
-                                fontSize: 40,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-              ),
-              if (!isActive) ...[
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Start Session'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                  onPressed: () {
-                    final settings = ref.read(settingsProvider);
-                    ref
-                        .read(breathePhaseProvider.notifier)
-                        .startSession(ref, settings.sessionDurationSeconds);
-                  },
-                ),
-                const SizedBox(height: 24),
-              ],
-              if (isActive) ...[
-                const SizedBox(height: 25),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
                 Text(
-                  phase.name.toUpperCase(),
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: circleColor.withOpacity(0.8),
-                      ),
+                  'Guided Breathing',
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
-                Card(
-                  margin: const EdgeInsets.all(16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Text('Session Stats',
-                            style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _StatItem(
-                              label: 'Breaths',
-                              value: '$breathCount',
-                              icon: Icons.air,
-                            ),
-                            _StatItem(
-                              label: 'Time',
-                              value: formatDuration(elapsedSeconds),
-                              icon: Icons.timer,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                Text(
+                  'Session duration: ${settings.sessionDurationSeconds}s • '
+                  'Pattern: ${settings.inhaleSeconds}/'
+                  '${settings.holdSeconds}/'
+                  '${settings.exhaleSeconds}/'
+                  '${settings.restSeconds}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                LayoutBuilder(builder: (context, constraints) {
+                  final double avail = constraints.maxWidth.isFinite
+                      ? constraints.maxWidth
+                      : MediaQuery.of(context).size.width;
+                  final double circleSize =
+                      (avail * 0.8).clamp(120.0, 360.0).toDouble();
+
+                  return SizedBox(
+                    width: circleSize,
+                    height: circleSize,
+                    child: BreathingCircle(controller: _animController),
+                  );
+                }),
+                const SizedBox(height: 20),
+                Column(
                   children: [
-                    IconButton(
-                      iconSize: 48,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withOpacity(0.8),
-                      icon: Icon(
-                        isPaused
-                            ? Icons.play_circle_filled
-                            : Icons.pause_circle_filled,
-                        size: 56,
-                        color: circleColor,
-                      ),
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        final controller =
-                            ref.read(breathePhaseProvider.notifier);
-                        if (isPaused) {
-                          controller.resume(ref);
-                        } else {
-                          controller.pause(ref);
-                        }
-                      },
+                    Text(
+                      _phaseLabel(phase),
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(width: 16),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.stop),
-                      label: const Text('End Session'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                      ),
-                      onPressed: () {
-                        final count = ref.read(breathCountProvider);
-                        final duration = ref.read(sessionDurationProvider);
-
-                        // Save session to history
-                        ref.read(sessionHistoryProvider.notifier).add(
-                              Session(
-                                date: DateTime.now(),
-                                breathsTaken: count,
-                                durationInSeconds: duration,
-                              ),
-                            );
-
-                        // End session and return
-                        ref
-                            .read(breathePhaseProvider.notifier)
-                            .endSession(ref: ref);
-                        Navigator.pop(context);
-                      },
+                    const SizedBox(height: 6),
+                    Text(
+                      countdown > 0 ? '$countdown s' : '',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Breaths: $breathsTaken',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
                 ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: Wrap(
+                    runSpacing: 8,
+                    spacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 240,
+                        child: ElevatedButton.icon(
+                          icon: Icon(
+                              isPaused ? Icons.play_arrow : Icons.play_circle),
+                          label: Text(isPaused ? 'Resume' : 'Start'),
+                          onPressed: () {
+                            if (isPaused) {
+                              controller.resume(ref);
+                            } else {
+                              controller.startSession(
+                                  ref, settings.sessionDurationSeconds);
+                            }
+                          },
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.pause),
+                          label: const Text('Pause'),
+                          onPressed: () {
+                            controller.pause(ref);
+                            _animController.stop();
+                          },
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.stop),
+                          label: const Text('Stop'),
+                          onPressed: () {
+                            controller.endSession(ref: ref);
+                            _animController.reset();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Tip: adjust breath lengths in Settings',
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _StatItem({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
     );
   }
 }
