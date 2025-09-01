@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/session.dart';
 import 'settings_controller.dart';
 
+import 'session_controller.dart';
+
 // Current breathing phase
 enum BreathPhase { inhale, hold, exhale, rest }
 
@@ -26,28 +28,28 @@ final animCommandProvider = StateProvider<(AnimationCommand, int?)>(
 // Paused state
 final isPausedProvider = StateProvider<bool>((ref) => false);
 
-// Session history
-final sessionHistoryProvider =
-    StateNotifierProvider<SessionHistoryController, List<Session>>(
-        (ref) => SessionHistoryController());
+// // Session history
+// final sessionHistoryProvider =
+//     StateNotifierProvider<SessionHistoryController, List<Session>>(
+//         (ref) => SessionHistoryController());
 
-class SessionHistoryController extends StateNotifier<List<Session>> {
-  SessionHistoryController() : super([]);
+// class SessionHistoryController extends StateNotifier<List<Session>> {
+//   SessionHistoryController() : super([]);
 
-  void add(Session session) {
-    state = [...state, session];
-  }
+//   void add(Session session) {
+//     state = [...state, session];
+//   }
 
-  void removeAt(int index) {
-    final list = [...state];
-    list.removeAt(index);
-    state = list;
-  }
+//   void removeAt(int index) {
+//     final list = [...state];
+//     list.removeAt(index);
+//     state = list;
+//   }
 
-  void clear() {
-    state = [];
-  }
-}
+//   void clear() {
+//     state = [];
+//   }
+// }
 
 class BreatheController extends StateNotifier<BreathPhase> {
   BreatheController() : super(BreathPhase.inhale);
@@ -195,6 +197,14 @@ class BreatheController extends StateNotifier<BreathPhase> {
       ref.read(phaseCountdownProvider.notifier).state = 0;
       ref.read(isPausedProvider.notifier).state = false;
     }
+  }
+
+  @override
+  void dispose() {
+    _sessionTimer?.cancel();
+    _phaseTimer?.cancel();
+    _audioPlayer.dispose();
+    super.dispose();
   }
 }
 

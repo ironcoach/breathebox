@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../controllers/breathe_controller.dart';
 import '../controllers/settings_controller.dart';
+import '../controllers/session_controller.dart';
 import '../models/session.dart';
 
 class BreatheScreen extends ConsumerStatefulWidget {
