@@ -7,16 +7,23 @@ class BreathingCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final animation = Tween<double>(begin: 0.7, end: 1.2).animate(
-      CurvedAnimation(parent: controller, curve: Curves.easeInOut),
-    );
+    //print("🔄 BreathingCircle rebuilding...");
 
     return AnimatedBuilder(
-      animation: animation,
+      animation: controller,
       builder: (context, child) {
+        // Scale from 0.7 to 1.2 based on controller value (0.0 to 1.0)
+        final scale = 0.7 +
+            (controller.value * 0.5); // 0.7 + (0.0-1.0 * 0.5) = 0.7 to 1.2
+
+        // print(
+        //     "🎯 Animation value: ${controller.value.toStringAsFixed(3)}, Scale: ${scale.toStringAsFixed(3)}");
+
         return Transform.scale(
-          scale: animation.value,
+          scale: scale,
           child: Container(
+            width: double.infinity,
+            height: double.infinity,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
@@ -28,11 +35,33 @@ class BreathingCircle extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
+                  blurRadius: 20 * scale, // Shadow grows with circle
+                  spreadRadius: 5 * scale,
                 ),
               ],
             ),
+            // child: Center(
+            //   child: Column(
+            //     mainAxisAlignment: MainAxisAlignment.center,
+            //     children: [
+            //       Text(
+            //         scale.toStringAsFixed(2),
+            //         style: const TextStyle(
+            //           fontSize: 24,
+            //           fontWeight: FontWeight.bold,
+            //           color: Colors.white,
+            //         ),
+            //       ),
+            //       Text(
+            //         'Value: ${controller.value.toStringAsFixed(2)}',
+            //         style: const TextStyle(
+            //           fontSize: 12,
+            //           color: Colors.white70,
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
           ),
         );
       },
