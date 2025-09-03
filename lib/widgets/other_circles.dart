@@ -220,8 +220,8 @@ class SubtleColorGlowCircle extends StatelessWidget {
     }
   }
 
-  double _getGlowIntensity() {
-    switch (currentPhase) {
+  double _getGlowIntensity(BreathPhase phase) {
+    switch (phase) {
       case BreathPhase.inhale:
         return 0.3 + (controller.value * 0.4); // 0.3 → 0.7
       case BreathPhase.exhale:
@@ -233,14 +233,27 @@ class SubtleColorGlowCircle extends StatelessWidget {
     }
   }
 
+  double _getScale(BreathPhase phase) {
+    switch (phase) {
+      case BreathPhase.inhale:
+        return 0.7 + (controller.value * 0.5);
+      case BreathPhase.exhale:
+        return 0.7 - (controller.value * 0.5);
+      case BreathPhase.hold:
+        return 0.6;
+      case BreathPhase.rest:
+        return 0.7;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, child) {
-        final scale = 0.7 + (controller.value * 0.5);
+        final scale = _getScale(currentPhase);
         final phaseColor = _getPhaseColor(currentPhase);
-        final glowIntensity = _getGlowIntensity();
+        final glowIntensity = _getGlowIntensity(currentPhase);
 
         return Transform.scale(
           scale: scale,
@@ -345,7 +358,7 @@ class ColorTransitionCircle extends StatelessWidget {
   const ColorTransitionCircle(
       {super.key, required this.controller, required this.currentPhase});
 
-  Color _getPhaseColor(BuildContext context, BreathPhase phase) {
+  Color _getPhaseColor(BreathPhase phase) {
     switch (phase) {
       case BreathPhase.inhale:
         return Colors.teal; // Calming green-blue
@@ -364,10 +377,8 @@ class ColorTransitionCircle extends StatelessWidget {
       animation: controller,
       builder: (context, child) {
         final scale = 0.7 + (controller.value * 0.5);
-        final baseColor = _getPhaseColor(context, currentPhase);
+        final baseColor = _getPhaseColor(currentPhase);
 
-        // ✅ FIX: Use Transform.scale instead of Matrix4
-        // Transform.scale automatically centers the scaling
         return Transform.scale(
           scale: scale,
           child: AnimatedContainer(
@@ -791,39 +802,3 @@ class PhaseRingBreathingCircle extends StatelessWidget {
     );
   }
 }
-
-// ========================================
-// USAGE EXAMPLES
-// ========================================
-
-/*
-// To implement any of these, replace your BreathingCircle widget in breathe_screen.dart:
-
-// 1. Color transitions (most popular):
-ColorTransitionCircle(
-  controller: _animController,
-  currentPhase: phase,
-)
-
-// 2. Glow intensity (subtle and calming):
-GlowBreathingCircle(
-  controller: _animController,
-  currentPhase: phase,
-)
-
-// 3. Progress ring (informative):
-PhaseRingBreathingCircle(
-  controller: _animController,
-  currentPhase: phase,
-  phaseCountdown: countdown,
-  phaseDuration: _secondsForPhase(phase),
-)
-
-// 4. Ripple effects (satisfying feedback):
-RippleBreathingCircle(
-  controller: _animController,
-  currentPhase: phase,
-)
-
-// You can also combine effects by stacking them in a Stack widget
-*/

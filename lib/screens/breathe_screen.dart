@@ -147,14 +147,14 @@ class _BreatheScreenState extends ConsumerState<BreatheScreen>
                     //   controller: _animController,
                     //   currentPhase: phase,
                     // ),
-                    child: SubtleColorGlowCircle(
-                      controller: _animController,
-                      currentPhase: phase,
-                    ),
-                    // child: ColorTransitionCircle(
+                    // child: SubtleColorGlowCircle(
                     //   controller: _animController,
                     //   currentPhase: phase,
                     // ),
+                    child: ColorTransitionCircle(
+                      controller: _animController,
+                      currentPhase: phase,
+                    ),
                     //child: BreathingCircle(controller: _animController),
                   );
                 }),
