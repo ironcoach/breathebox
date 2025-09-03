@@ -371,12 +371,33 @@ class ColorTransitionCircle extends StatelessWidget {
     }
   }
 
+  double _getScale() {
+    switch (currentPhase) {
+      case BreathPhase.inhale:
+        // Grow from 0.7 to 1.2 during inhale
+        return 0.7 + (controller.value * 0.5);
+
+      case BreathPhase.hold:
+        // ✅ HOLD: Stay smaller (fixed size)
+        return 0.9; // Smaller than full inhale (1.2)
+
+      case BreathPhase.exhale:
+        // Shrink from 1.2 to 0.7 during exhale
+        return 1.2 - (controller.value * 0.5);
+
+      case BreathPhase.rest:
+        // Stay small during rest
+        return 0.7;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, child) {
-        final scale = 0.7 + (controller.value * 0.5);
+        final scale = _getScale();
+        //final scale = 0.7 + (controller.value * 0.5);
         final baseColor = _getPhaseColor(currentPhase);
 
         return Transform.scale(
